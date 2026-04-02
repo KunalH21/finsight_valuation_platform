@@ -1,0 +1,9 @@
+profiles.yml
+venv/
+.env
+*.pyc
+__pycache__/
+.terraform/
+target/
+dbt_packages/
+logs/
