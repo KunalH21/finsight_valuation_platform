@@ -1,4 +1,4 @@
-S3_BRONZE_BUCKET = "finsight-bronze-418272773891" 
+S3_BRONZE_BUCKET = "finsight-bronze-layer" 
 AWS_REGION = "us-east-1"
 TEST_TICKERS = [
     "AAPL", "MSFT", "GOOGL", "META", "NVDA", "ORCL", "CRM", "ADBE", "INTC", "AMD",
