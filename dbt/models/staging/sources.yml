@@ -1,0 +1,32 @@
+
+version: 2
+sources:
+  - name: finsight_raw
+    database: FINSIGHT_DB
+    schema: RAW
+    tables:
+      - name: raw_income_statement
+        freshness:
+          warn_after: {count: 95, period: day} 
+          error_after: {count: 100, period: day}
+        loaded_at_field: ingested_at
+      - name: raw_balance_sheet
+        freshness:
+          warn_after: {count: 95, period: day} 
+          error_after: {count: 100, period: day}
+        loaded_at_field: ingested_at
+      - name: raw_cash_flow
+        freshness:
+          warn_after: {count: 95, period: day} 
+          error_after: {count: 100, period: day}
+        loaded_at_field: ingested_at
+      - name: raw_market_data
+        freshness:
+          warn_after: {count: 24, period: hour} 
+          error_after: {count: 48, period: hour}
+        loaded_at_field: ingested_at
+      - name: raw_company_profile
+        freshness:
+          warn_after: {count: 30, period: day} 
+          error_after: {count: 60, period: day}
+        loaded_at_field: ingested_at

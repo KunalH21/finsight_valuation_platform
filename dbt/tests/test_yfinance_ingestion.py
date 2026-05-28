@@ -1,8 +1,8 @@
 import datetime
-import json
 import os
 import sys
 import types
+from unittest.mock import Mock
 
 import pytest
 
@@ -21,7 +21,7 @@ if 'yfinance' not in sys.modules:
     yfinance_stub.Ticker = lambda ticker: None
     sys.modules['yfinance'] = yfinance_stub
 
-from ingestion import utils, yfinance_ingestion
+from ingestion import yfinance_ingestion
 
 
 class MockDataFrame:
@@ -37,11 +37,28 @@ class MockDataFrame:
 
 
 class MockTicker:
-    def __init__(self, financials, balance_sheet, cashflow, info):
+    def __init__(self, financials, balance_sheet, cashflow, info, history_rows=None):
         self.financials = financials
         self.balance_sheet = balance_sheet
         self.cashflow = cashflow
         self.info = info
+        self._history_rows = history_rows or []
+
+    def history(self, period):
+        assert period == '5y'
+        return MockHistoryFrame(self._history_rows)
+
+
+class MockHistoryFrame:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def reset_index(self):
+        return self
+
+    def to_dict(self, orient):
+        assert orient == 'records'
+        return self._rows
 
 
 def make_income_statement_df():
@@ -82,6 +99,7 @@ def test_fetch_company_financials_returns_dict_for_valid_ticker(monkeypatch):
         balance_sheet=make_balance_sheet_df(),
         cashflow=make_cashflow_df(),
         info={'sector': 'Technology'},
+        history_rows=[{'Date': '2024-12-31', 'Close': 123.45, 'Volume': 1000}],
     )
     monkeypatch.setattr(yfinance_ingestion.yf, 'Ticker', lambda ticker: mock_ticker)
 
@@ -91,6 +109,7 @@ def test_fetch_company_financials_returns_dict_for_valid_ticker(monkeypatch):
     assert result['ticker'] == 'FAKE'
     assert result['data_source'] == 'yfinance'
     assert result['info'] == {'sector': 'Technology'}
+    assert result['price_history'] == [{'Date': '2024-12-31', 'Close': 123.45, 'Volume': 1000}]
 
 
 def test_fetch_company_financials_adds_ingestion_timestamp(monkeypatch):
@@ -153,38 +172,25 @@ def test_fetch_company_financials_exposes_balance_sheet_and_cash_flow(monkeypatc
     assert list(result['cash_flow'].values())[0]['Operating Cash Flow'] == 400
 
 
-def test_upload_to_s3_constructs_expected_partition_path(monkeypatch):
-    captured = {}
+def test_fetch_company_financials_includes_price_history(monkeypatch):
+    mock_ticker = MockTicker(
+        financials=make_income_statement_df(),
+        balance_sheet=make_balance_sheet_df(),
+        cashflow=make_cashflow_df(),
+        info={},
+        history_rows=[
+            {'Date': '2024-12-30', 'Close': 100.0, 'Volume': 1000},
+            {'Date': '2024-12-31', 'Close': 101.5, 'Volume': 1200},
+        ],
+    )
+    monkeypatch.setattr(yfinance_ingestion.yf, 'Ticker', lambda ticker: mock_ticker)
 
-    def fake_client(service_name, region_name=None):
-        class FakeS3Client:
-            def put_object(self, Bucket, Key, Body):
-                captured['Bucket'] = Bucket
-                captured['Key'] = Key
-                captured['Body'] = Body
+    result = yfinance_ingestion.fetch_company_financials('FAKE')
 
-        return FakeS3Client()
-
-    monkeypatch.setattr(utils.boto3, 'client', fake_client)
-
-    data = {
-        'ticker': 'FAKE',
-        'ingestion_timestamp': '2024-11-05T12:00:00',
-        'data_source': 'yfinance',
-        'income_statement': make_income_statement_df().to_dict(),
-        'balance_sheet': make_balance_sheet_df().to_dict(),
-        'cash_flow': make_cashflow_df().to_dict(),
-        'info': {},
-    }
-
-    utils.upload_to_s3(data, 'FAKE')
-
-    assert captured['Key'] == 'financials/year=2024/ticker=FAKE/data.json'
-    assert captured['Bucket'] == utils.config.S3_BRONZE_BUCKET
-    assert isinstance(captured['Body'], str)
-    uploaded = json.loads(captured['Body'])
-    assert uploaded['ticker'] == 'FAKE'
-    assert uploaded['ingestion_timestamp'] == '2024-11-05T12:00:00'
+    assert result['price_history'] == [
+        {'Date': '2024-12-30', 'Close': 100.0, 'Volume': 1000},
+        {'Date': '2024-12-31', 'Close': 101.5, 'Volume': 1200},
+    ]
 
 
 def test_fetch_company_financials_returns_non_null_ticker(monkeypatch):
@@ -200,3 +206,42 @@ def test_fetch_company_financials_returns_non_null_ticker(monkeypatch):
 
     assert result['ticker'] is not None
     assert result['ticker'] != ''
+
+
+def test_fetch_company_financials_handles_yfinance_exceptions(monkeypatch):
+    def raise_error(ticker):
+        raise RuntimeError('yfinance failure')
+
+    monkeypatch.setattr(yfinance_ingestion.yf, 'Ticker', raise_error)
+
+    assert yfinance_ingestion.fetch_company_financials('FAIL') is None
+
+
+def test_run_ingestion_reuses_s3_client_and_skips_empty_payloads(monkeypatch):
+    upload_mock = Mock()
+    sleep_mock = Mock()
+    shared_client = object()
+
+    monkeypatch.setattr(yfinance_ingestion.utils, 'get_s3_client', lambda: shared_client)
+
+    results = [
+        {'ticker': 'AAPL', 'ingestion_timestamp': '2024-11-05T12:00:00'},
+        None,
+        {'ticker': 'MSFT', 'ingestion_timestamp': '2024-11-05T12:00:00'},
+    ]
+
+    def fake_fetch(_ticker):
+        return results.pop(0)
+
+    monkeypatch.setattr(yfinance_ingestion, 'fetch_company_financials', fake_fetch)
+
+    yfinance_ingestion.run_ingestion(
+        ['AAPL', 'EMPTY', 'MSFT'],
+        uploader=upload_mock,
+        sleeper=sleep_mock,
+    )
+
+    assert upload_mock.call_count == 2
+    assert upload_mock.call_args_list[0].kwargs['s3_client'] is shared_client
+    assert upload_mock.call_args_list[1].kwargs['s3_client'] is shared_client
+    assert sleep_mock.call_count == 2

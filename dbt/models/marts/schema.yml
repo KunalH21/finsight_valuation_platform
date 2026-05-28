@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: mart_company_trend
+    description: "8-quarter rolling trend for 50 S&P 500 companies."
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+      - name: period_date
+        tests:
+          - not_null
+      - name: revenue_growth_yoy
+        description: "Year-over-Year growth. Should be NULL for the first 4 periods"
