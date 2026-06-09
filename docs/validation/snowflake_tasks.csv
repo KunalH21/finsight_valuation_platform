@@ -1,0 +1,84 @@
+created_on,name,id,database_name,schema_name,owner,comment,warehouse,schedule,predecessors,state,definition,condition,allow_overlapping_execution,error_integration,last_committed_on,last_suspended_on,owner_role_type,config,task_relations,last_suspended_reason,success_integration,scheduling_mode,target_completion_interval,execute_as_user,overlap_policy,created_by_user
+2026-05-25 10:18:21.194 -0700,LOAD_BALANCE_SHEET_TASK,01c49bce-e24f-73a4-0000-000000000341,FINSIGHT_DB,RAW,ACCOUNTADMIN,,FINSIGHT_WH,"USING CRON 0 6 1 2,5,8,11 * UTC",[],suspended,"COPY INTO FINSIGHT_DB.RAW.RAW_BALANCE_SHEET (ticker, report_date, fiscal_quarter, sector, total_assets, total_liabilities, total_equity, common_stock, retained_earnings, data_quality_flag)
+FROM (
+  SELECT 
+    $1:ticker::varchar, 
+    $1:date::date,  
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector, 
+    $1:total_assets::double, 
+    $1:total_liabilities_net_minority_interest::double, 
+    -- We map the long yfinance name to our clean column
+    $1:total_equity_gross_minority_interest::double, 
+    $1:common_stock::double, 
+    $1:retained_earnings::double, 
+    $1:data_quality_flag::varchar
+  FROM @balance_sheet_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*.parquet'
+ON_ERROR = 'CONTINUE'
+force = True",,FALSE,null,2026-05-25 10:19:19.026 -0700,,ROLE,,"{""Predecessors"":[]}",,null,,,,NO_OVERLAP,KUNALFINSIGHT
+2026-05-19 07:28:10.396 -0700,LOAD_CASH_FLOW_TASK,01c47964-f04d-b5f6-0000-0000000000c3,FINSIGHT_DB,RAW,ACCOUNTADMIN,,FINSIGHT_WH,"USING CRON 0 6 1 2,5,8,11 * UTC",[],suspended,"COPY INTO FINSIGHT_DB.RAW.RAW_CASH_FLOW
+  (ticker, report_date, fiscal_quarter, sector, net_income, depreciation_amortization, stock_based_compensation, change_in_working_capital, data_quality_flag)
+FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:net_income::double,
+    $1:depreciation_and_amortization::double,
+    $1:stock_based_compensation::double,
+    $1:change_in_working_capital::double,
+    $1:data_quality_flag::varchar
+  FROM @cash_flow_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE'",,FALSE,null,2026-05-19 07:30:10.821 -0700,,ROLE,,"{""Predecessors"":[]}",,null,,,,NO_OVERLAP,KUNALFINSIGHT
+2026-05-19 07:28:52.202 -0700,LOAD_COMPANY_PROFILE_TASK,01c47964-3ff5-3361-0000-000000000202,FINSIGHT_DB,RAW,ACCOUNTADMIN,,FINSIGHT_WH,USING CRON 0 0 1 * * UTC,[],suspended,"COPY INTO FINSIGHT_DB.RAW.RAW_COMPANY_PROFILE (ticker, company_name, sector, industry, exchange, country, employees)
+FROM (
+  SELECT $1:ticker::varchar, $1:shortName::varchar, $1:sector::varchar, $1:industry::varchar, $1:exchange::varchar, $1:country::varchar, $1:fullTimeEmployees::int
+  FROM @company_profile_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*.parquet'
+ON_ERROR = 'CONTINUE'",,FALSE,null,2026-05-19 07:30:13.961 -0700,,ROLE,,"{""Predecessors"":[]}",,null,,,,NO_OVERLAP,KUNALFINSIGHT
+2026-05-19 07:27:46.398 -0700,LOAD_INCOME_STATEMENT_TASK,01c47963-5324-df5c-0000-0000000001c1,FINSIGHT_DB,RAW,ACCOUNTADMIN,,FINSIGHT_WH,"USING CRON 0 6 1 2,5,8,11 * UTC",[],suspended,"COPY INTO FINSIGHT_DB.RAW.RAW_INCOME_statement
+  (ticker, report_date, fiscal_quarter, sector, ebitda, total_revenue, operating_income, gross_profit, total_debt, cash_and_equivalents, operating_cash_flow, capital_expenditure, data_quality_flag)
+    FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:ebitda::double,
+    $1:total_revenue::double,
+    $1:operating_income::double,
+    $1:gross_profit::double,
+    $1:total_debt::double,
+    $1:cash_and_cash_equivalents::double,
+    $1:operating_cash_flow::double,
+    $1:capital_expenditure::double,
+    $1:data_quality_flag::varchar
+  FROM @income_statement_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE'",,FALSE,null,2026-05-19 07:30:08.065 -0700,,ROLE,,"{""Predecessors"":[]}",,null,,,,NO_OVERLAP,KUNALFINSIGHT
+2026-05-28 02:26:31.570 -0700,LOAD_MARKET_DATA_TASK,01c4aad6-0b60-fa92-0000-000000000441,FINSIGHT_DB,RAW,ACCOUNTADMIN,,FINSIGHT_WH,USING CRON 0 2 * * 2-6 UTC,[],suspended,"COPY INTO FINSIGHT_DB.RAW.RAW_MARKET_DATA (ticker, price_date, closing_price, volume, market_cap)
+FROM (
+  SELECT 
+    $1:ticker::varchar, 
+    $1:date::date, 
+    $1:close::double, 
+    $1:volume::bigint, 
+    -- DEFENSIVE FIX: Check both common variants of the key
+    COALESCE($1:marketcap::double, $1:market_cap::double) 
+  FROM @market_data_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+-- PATTERN FIX: Ignore the .crc files and only load the 'part' data files
+PATTERN = '.*.parquet' 
+ON_ERROR = 'CONTINUE'",,FALSE,null,2026-05-28 02:26:49.927 -0700,2026-06-05 10:38:22.408 -0700,ROLE,,"{""Predecessors"":[]}",USER_SUSPENDED,null,,,,NO_OVERLAP,KUNALFINSIGHT

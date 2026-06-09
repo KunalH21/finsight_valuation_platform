@@ -1,8 +1,4 @@
 
-target/
-dbt_packages/
-logs/
-
 # Mac
 .DS_Store
 .obsidian/
@@ -15,6 +11,7 @@ __pycache__/
 .terraform/
 *.tfstate
 *.tfstate.backup
+*.tfstate.*
 
 # DBT
 target/
@@ -25,3 +22,13 @@ logs/
 .env
 *.tfvars
 profiles.yml
+
+# Airflow
+airflow/logs/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# dbt artifacts
+dbt/target/

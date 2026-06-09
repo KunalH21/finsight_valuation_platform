@@ -48,7 +48,7 @@ def fetch_company_financials(ticker: str) -> dict:
 
 
 def run_ingestion(tickers, uploader=utils.upload_to_s3, sleeper=time.sleep):
-    s3_client = utils.get_s3_client()
+    #s3_client = utils.get_s3_client()
 
     logger.info(f"Starting ingestion for {len(tickers)} companies...")
 
@@ -58,7 +58,7 @@ def run_ingestion(tickers, uploader=utils.upload_to_s3, sleeper=time.sleep):
         if not data:
             continue
 
-        uploader(data, ticker, s3_client=s3_client)
+        uploader(data, ticker)
         sleeper(0.5)
 
     logger.info("Week 1 Ingestion Milestone Complete.")

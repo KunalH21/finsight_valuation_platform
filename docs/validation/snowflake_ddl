@@ -1,0 +1,1367 @@
+
+##SELECT GET_DDL('DATABASE', 'FINSIGHT_DB');
+
+create or replace database FINSIGHT_DB;
+create or replace schema INTERMEDIATE COMMENT='for metric computation';
+
+create or replace TRANSIENT TABLE INT_VALUATION_INPUTS (
+	TICKER VARCHAR(16777216),
+	PERIOD_DATE DATE,
+	REVENUE FLOAT,
+	SECTOR VARCHAR(16777216),
+	EBITDA FLOAT,
+	OPERATING_INCOME FLOAT,
+	GROSS_PROFIT FLOAT,
+	NET_INCOME FLOAT,
+	TOTAL_ASSETS FLOAT,
+	TOTAL_LIABILITIES FLOAT,
+	TOTAL_EQUITY FLOAT,
+	MARKET_CAP FLOAT,
+	CLOSING_PRICE FLOAT,
+	DATA_COMPLETENESS_FLAG VARCHAR(14),
+	ENTERPRISE_VALUE FLOAT,
+	EV_TO_EBITDA FLOAT,
+	PE_RATIO FLOAT,
+	PB_RATIO FLOAT,
+	GROSS_MARGIN FLOAT,
+	OPERATING_MARGIN FLOAT,
+	EV_TO_REVENUE FLOAT
+);
+create or replace schema MARTS COMMENT='for the final analytical tables';
+
+create or replace TRANSIENT TABLE MART_COMPANY_TREND (
+	TICKER VARCHAR(16777216),
+	PERIOD_DATE DATE,
+	SECTOR VARCHAR(16777216),
+	REVENUE FLOAT,
+	EBITDA FLOAT,
+	GROSS_MARGIN FLOAT,
+	OPERATING_MARGIN FLOAT,
+	EV_TO_EBITDA FLOAT,
+	PREV_YEAR_REVENUE FLOAT,
+	PREV_YEAR_EBITDA FLOAT,
+	PREV_YEAR_GROSS_MARGIN FLOAT,
+	PREV_QUARTER_EV_EBITDA FLOAT,
+	MARGIN_EXPANSION_YOY FLOAT,
+	REVENUE_GROWTH_YOY FLOAT,
+	EBITDA_GROWTH_YOY FLOAT
+);
+create or replace TRANSIENT TABLE MART_SECTOR_COMPS (
+	SECTOR VARCHAR(16777216),
+	PERIOD_DATE DATE,
+	MEDIAN_EV_EBITDA FLOAT,
+	MEDIAN_PE_RATIO FLOAT,
+	MEDIAN_GROSS_MARGIN FLOAT,
+	MEDIAN_OPERATING_MARGIN FLOAT,
+	COMPANY_COUNT_IN_SECTOR NUMBER(18,0)
+);
+create or replace TRANSIENT TABLE MART_VALUATION_MULTIPLES (
+	TICKER VARCHAR(16777216),
+	PERIOD_DATE DATE,
+	REVENUE FLOAT,
+	EBITDA FLOAT,
+	NET_INCOME FLOAT,
+	MARKET_CAP FLOAT,
+	ENTERPRISE_VALUE FLOAT,
+	GROSS_MARGIN FLOAT,
+	OPERATING_MARGIN FLOAT,
+	EV_TO_EBITDA FLOAT,
+	PE_RATIO FLOAT,
+	EV_TO_REVENUE FLOAT,
+	PB_RATIO FLOAT,
+	FISCAL_YEAR NUMBER(4,0),
+	FISCAL_QUARTER VARCHAR(16777216),
+	DATA_COMPLETENESS_FLAG VARCHAR(14)
+);
+create or replace schema PUBLIC;
+
+create or replace schema RAW COMMENT='S3 landing';
+
+create or replace TRANSIENT TABLE MY_FIRST_DBT_MODEL (
+	ID NUMBER(1,0)
+);
+create or replace TABLE RAW_BALANCE_SHEET (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	TOTAL_ASSETS FLOAT,
+	TOTAL_LIABILITIES FLOAT,
+	COMMON_STOCK FLOAT,
+	RETAINED_EARNINGS FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP(),
+	TOTAL_EQUITY FLOAT
+);
+create or replace TABLE RAW_BALANCE_SHEETS (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	TOTAL_ASSETS FLOAT,
+	TOTAL_LIABILITIES FLOAT,
+	COMMON_STOCK FLOAT,
+	RETAINED_EARNINGS FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_CASH_FLOW (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	NET_INCOME FLOAT,
+	DEPRECIATION_AMORTIZATION FLOAT,
+	STOCK_BASED_COMPENSATION FLOAT,
+	CHANGE_IN_WORKING_CAPITAL FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_CASH_FLOWS (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	NET_INCOME FLOAT,
+	DEPRECIATION_AMORTIZATION FLOAT,
+	STOCK_BASED_COMPENSATION FLOAT,
+	CHANGE_IN_WORKING_CAPITAL FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_COMPANY_PROFILE (
+	TICKER VARCHAR(16777216),
+	COMPANY_NAME VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	INDUSTRY VARCHAR(16777216),
+	EXCHANGE VARCHAR(16777216),
+	COUNTRY VARCHAR(16777216),
+	EMPLOYEES NUMBER(38,0),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_INCOME_STATEMENT (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	EBITDA FLOAT,
+	TOTAL_REVENUE FLOAT,
+	OPERATING_INCOME FLOAT,
+	GROSS_PROFIT FLOAT,
+	TOTAL_DEBT FLOAT,
+	CASH_AND_EQUIVALENTS FLOAT,
+	OPERATING_CASH_FLOW FLOAT,
+	CAPITAL_EXPENDITURE FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_INCOME_STATEMENTS (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	EBITDA FLOAT,
+	TOTAL_REVENUE FLOAT,
+	OPERATING_INCOME FLOAT,
+	GROSS_PROFIT FLOAT,
+	TOTAL_DEBT FLOAT,
+	CASH_AND_EQUIVALENTS FLOAT,
+	OPERATING_CASH_FLOW FLOAT,
+	CAPITAL_EXPENDITURE FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_MARKET_DATA (
+	TICKER VARCHAR(16777216),
+	PRICE_DATE DATE,
+	CLOSING_PRICE FLOAT,
+	VOLUME NUMBER(38,0),
+	MARKET_CAP FLOAT,
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace view MY_SECOND_DBT_MODEL(
+	ID
+) as (
+    -- Use the `ref` function to select from other models
+
+select *
+from FINSIGHT_DB.RAW.my_first_dbt_model
+where id = 1
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.my_second_dbt_model"} */;
+create or replace view STG_BALANCE_SHEET(
+	BALANCE_SHEET_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	TOTAL_ASSETS,
+	TOTAL_LIABILITIES,
+	COMMON_STOCK,
+	RETAINED_EARNINGS,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_balance_sheet
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as balance_sheet_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        total_assets::double as total_assets,
+        total_liabilities::double as total_liabilities,
+        common_stock::double as common_stock,
+        retained_earnings::double as retained_earnings,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_balance_sheet"} */;
+create or replace view STG_CASH_FLOW(
+	CASH_FLOW_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	NET_INCOME,
+	DEPRECIATION_AND_AMORTIZATION,
+	STOCK_BASED_COMPENSATION,
+	CHANGE_IN_WORKING_CAPITAL,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_cash_flow
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as cash_flow_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        net_income::double as net_income,
+        depreciation_amortization::double as depreciation_and_amortization,
+        stock_based_compensation::double as stock_based_compensation,
+        change_in_working_capital::double as change_in_working_capital,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_cash_flow"} */;
+create or replace view STG_COMPANY_PROFILE(
+	COMPANY_ID,
+	TICKER,
+	COMPANY_NAME,
+	SECTOR,
+	INDUSTRY,
+	EXCHANGE,
+	COUNTRY,
+	EMPLOYEE_COUNT,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_company_profile
+),
+renamed as (
+    select
+        md5(cast(coalesce(cast(ticker as string), '') as string)) as company_id, -- This doesn't need a date-based surrogate key because company metadata is static
+        ticker::string as ticker,
+        company_name::string as company_name,
+        sector::string as sector,
+        industry::string as industry,
+        exchange::string as exchange,
+        country::string as country,
+        employees::int as employee_count,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_company_profile"} */;
+create or replace view STG_INCOME_STATEMENT(
+	INCOME_STATEMENT_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	EBITDA,
+	REVENUE,
+	OPERATING_INCOME,
+	GROSS_PROFIT,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_income_statement
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as income_statement_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        ebitda::double as ebitda,
+        total_revenue::double as revenue, -- Renaming for clarity
+        operating_income::double as operating_income,
+        gross_profit::double as gross_profit,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_income_statement"} */;
+create or replace view STG_MARKET_DATA(
+	MARKET_DATA_ID,
+	TICKER,
+	PRICE_DATE,
+	CLOSING_PRICE,
+	VOLUME,
+	MARKET_CAP,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_market_data
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(price_date as string), '') as string))
+ as market_data_id,
+        ticker::string as ticker,
+        price_date::date as price_date,
+        closing_price::double as closing_price,
+        volume::bigint as volume,
+        market_cap::double as market_cap,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_market_data"} */;
+CREATE OR REPLACE FILE FORMAT FINSIGHT_PARQUET_FORMAT
+	TYPE = PARQUET
+	NULL_IF = ()
+;
+create or replace task LOAD_BALANCE_SHEETS_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_BALANCE_SHEETS
+  (ticker, report_date, fiscal_quarter, sector, total_assets, total_liabilities, common_stock, retained_earnings, data_quality_flag)
+FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:total_assets::double,
+    $1:total_liabilities_net_minority_interest::double,
+    $1:common_stock::double,
+    $1:retained_earnings::double,
+    $1:data_quality_flag::varchar
+  FROM @balance_sheet_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_BALANCE_SHEET_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_BALANCE_SHEET (ticker, report_date, fiscal_quarter, sector, total_assets, total_liabilities, total_equity, common_stock, retained_earnings, data_quality_flag)
+FROM (
+  SELECT 
+    $1:ticker::varchar, 
+    $1:date::date,  
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector, 
+    $1:total_assets::double, 
+    $1:total_liabilities_net_minority_interest::double, 
+    -- We map the long yfinance name to our clean column
+    $1:total_equity_gross_minority_interest::double, 
+    $1:common_stock::double, 
+    $1:retained_earnings::double, 
+    $1:data_quality_flag::varchar
+  FROM @balance_sheet_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*.parquet'
+ON_ERROR = 'CONTINUE'
+force = True;
+create or replace task LOAD_CASH_FLOWS_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_CASH_FLOWS
+  (ticker, report_date, fiscal_quarter, sector, net_income, depreciation_amortization, stock_based_compensation, change_in_working_capital, data_quality_flag)
+FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:net_income::double,
+    $1:depreciation_and_amortization::double,
+    $1:stock_based_compensation::double,
+    $1:change_in_working_capital::double,
+    $1:data_quality_flag::varchar
+  FROM @cash_flow_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_CASH_FLOW_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_CASH_FLOW
+  (ticker, report_date, fiscal_quarter, sector, net_income, depreciation_amortization, stock_based_compensation, change_in_working_capital, data_quality_flag)
+FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:net_income::double,
+    $1:depreciation_and_amortization::double,
+    $1:stock_based_compensation::double,
+    $1:change_in_working_capital::double,
+    $1:data_quality_flag::varchar
+  FROM @cash_flow_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_COMPANY_PROFILE_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 0 1 * * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_COMPANY_PROFILE (ticker, company_name, sector, industry, exchange, country, employees)
+FROM (
+  SELECT $1:ticker::varchar, $1:shortName::varchar, $1:sector::varchar, $1:industry::varchar, $1:exchange::varchar, $1:country::varchar, $1:fullTimeEmployees::int
+  FROM @company_profile_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_INCOME_STATEMENTS_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_INCOME_STATEMENTS
+  (ticker, report_date, fiscal_quarter, sector, ebitda, total_revenue, operating_income, gross_profit, total_debt, cash_and_equivalents, operating_cash_flow, capital_expenditure, data_quality_flag)
+    FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:ebitda::double,
+    $1:total_revenue::double,
+    $1:operating_income::double,
+    $1:gross_profit::double,
+    $1:total_debt::double,
+    $1:cash_and_cash_equivalents::double,
+    $1:operating_cash_flow::double,
+    $1:capital_expenditure::double,
+    $1:data_quality_flag::varchar
+  FROM @income_statement_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_INCOME_STATEMENT_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_INCOME_statement
+  (ticker, report_date, fiscal_quarter, sector, ebitda, total_revenue, operating_income, gross_profit, total_debt, cash_and_equivalents, operating_cash_flow, capital_expenditure, data_quality_flag)
+    FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:ebitda::double,
+    $1:total_revenue::double,
+    $1:operating_income::double,
+    $1:gross_profit::double,
+    $1:total_debt::double,
+    $1:cash_and_cash_equivalents::double,
+    $1:operating_cash_flow::double,
+    $1:capital_expenditure::double,
+    $1:data_quality_flag::varchar
+  FROM @income_statement_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_MARKET_DATA_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 2 * * 2-6 UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_MARKET_DATA (ticker, price_date, closing_price, volume, market_cap)
+FROM (
+  SELECT 
+    $1:ticker::varchar, 
+    $1:date::date, 
+    $1:close::double, 
+    $1:volume::bigint, 
+    -- DEFENSIVE FIX: Check both common variants of the key
+    COALESCE($1:marketcap::double, $1:market_cap::double) 
+  FROM @market_data_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+-- PATTERN FIX: Ignore the .crc files and only load the 'part' data files
+PATTERN = '.*.parquet' 
+ON_ERROR = 'CONTINUE';
+create or replace schema STAGING COMMENT='initial dbt cleaning';
+
+create or replace view STG_BALANCE_SHEET(
+	BALANCE_SHEET_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	TOTAL_ASSETS,
+	TOTAL_EQUITY,
+	TOTAL_LIABILITIES,
+	COMMON_STOCK,
+	RETAINED_EARNINGS,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_balance_sheet
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as balance_sheet_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        total_assets::double as total_assets,
+        total_equity::double as total_equity,
+        total_liabilities::double as total_liabilities,
+        common_stock::double as common_stock,
+        retained_earnings::double as retained_earnings,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_balance_sheet"} */;
+create or replace view STG_CASH_FLOW(
+	CASH_FLOW_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	NET_INCOME,
+	DEPRECIATION_AND_AMORTIZATION,
+	STOCK_BASED_COMPENSATION,
+	CHANGE_IN_WORKING_CAPITAL,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_cash_flow
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as cash_flow_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        net_income::double as net_income,
+        depreciation_amortization::double as depreciation_and_amortization,
+        stock_based_compensation::double as stock_based_compensation,
+        change_in_working_capital::double as change_in_working_capital,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_cash_flow"} */;
+create or replace view STG_COMPANY_PROFILE(
+	COMPANY_ID,
+	TICKER,
+	COMPANY_NAME,
+	SECTOR,
+	INDUSTRY,
+	EXCHANGE,
+	COUNTRY,
+	EMPLOYEE_COUNT,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_company_profile
+),
+renamed as (
+    select
+        md5(cast(coalesce(cast(ticker as string), '') as string)) as company_id, -- This doesn't need a date-based surrogate key because company metadata is static
+        ticker::string as ticker,
+        company_name::string as company_name,
+        sector::string as sector,
+        industry::string as industry,
+        exchange::string as exchange,
+        country::string as country,
+        employees::int as employee_count,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_company_profile"} */;
+create or replace view STG_INCOME_STATEMENT(
+	INCOME_STATEMENT_ID,
+	TICKER,
+	SECTOR,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	EBITDA,
+	REVENUE,
+	OPERATING_INCOME,
+	GROSS_PROFIT,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_income_statement
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as income_statement_id,
+        ticker::string as ticker,
+        sector::string as sector,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        ebitda::double as ebitda,
+        total_revenue::double as revenue, -- Renaming for clarity
+        operating_income::double as operating_income,
+        gross_profit::double as gross_profit,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_income_statement"} */;
+create or replace view STG_MARKET_DATA(
+	MARKET_DATA_ID,
+	TICKER,
+	PRICE_DATE,
+	CLOSING_PRICE,
+	VOLUME,
+	MARKET_CAP,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_market_data
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(price_date as string), '') as string))
+ as market_data_id,
+        ticker::string as ticker,
+        price_date::date as price_date,
+        closing_price::double as closing_price,
+        volume::bigint as volume,
+        market_cap::double as market_cap,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_market_data"} */;
+
+
+
+
+##SELECT GET_DDL('SCHEMA', 'RAW');
+
+create or replace schema RAW COMMENT='S3 landing';
+
+create or replace TRANSIENT TABLE MY_FIRST_DBT_MODEL (
+	ID NUMBER(1,0)
+);
+create or replace TABLE RAW_BALANCE_SHEET (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	TOTAL_ASSETS FLOAT,
+	TOTAL_LIABILITIES FLOAT,
+	COMMON_STOCK FLOAT,
+	RETAINED_EARNINGS FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP(),
+	TOTAL_EQUITY FLOAT
+);
+create or replace TABLE RAW_BALANCE_SHEETS (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	TOTAL_ASSETS FLOAT,
+	TOTAL_LIABILITIES FLOAT,
+	COMMON_STOCK FLOAT,
+	RETAINED_EARNINGS FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_CASH_FLOW (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	NET_INCOME FLOAT,
+	DEPRECIATION_AMORTIZATION FLOAT,
+	STOCK_BASED_COMPENSATION FLOAT,
+	CHANGE_IN_WORKING_CAPITAL FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_CASH_FLOWS (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	NET_INCOME FLOAT,
+	DEPRECIATION_AMORTIZATION FLOAT,
+	STOCK_BASED_COMPENSATION FLOAT,
+	CHANGE_IN_WORKING_CAPITAL FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_COMPANY_PROFILE (
+	TICKER VARCHAR(16777216),
+	COMPANY_NAME VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	INDUSTRY VARCHAR(16777216),
+	EXCHANGE VARCHAR(16777216),
+	COUNTRY VARCHAR(16777216),
+	EMPLOYEES NUMBER(38,0),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_INCOME_STATEMENT (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	EBITDA FLOAT,
+	TOTAL_REVENUE FLOAT,
+	OPERATING_INCOME FLOAT,
+	GROSS_PROFIT FLOAT,
+	TOTAL_DEBT FLOAT,
+	CASH_AND_EQUIVALENTS FLOAT,
+	OPERATING_CASH_FLOW FLOAT,
+	CAPITAL_EXPENDITURE FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_INCOME_STATEMENTS (
+	TICKER VARCHAR(16777216),
+	REPORT_DATE DATE,
+	FISCAL_QUARTER VARCHAR(16777216),
+	SECTOR VARCHAR(16777216),
+	EBITDA FLOAT,
+	TOTAL_REVENUE FLOAT,
+	OPERATING_INCOME FLOAT,
+	GROSS_PROFIT FLOAT,
+	TOTAL_DEBT FLOAT,
+	CASH_AND_EQUIVALENTS FLOAT,
+	OPERATING_CASH_FLOW FLOAT,
+	CAPITAL_EXPENDITURE FLOAT,
+	DATA_QUALITY_FLAG VARCHAR(16777216),
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace TABLE RAW_MARKET_DATA (
+	TICKER VARCHAR(16777216),
+	PRICE_DATE DATE,
+	CLOSING_PRICE FLOAT,
+	VOLUME NUMBER(38,0),
+	MARKET_CAP FLOAT,
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+create or replace view MY_SECOND_DBT_MODEL(
+	ID
+) as (
+    -- Use the `ref` function to select from other models
+
+select *
+from FINSIGHT_DB.RAW.my_first_dbt_model
+where id = 1
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.my_second_dbt_model"} */;
+create or replace view STG_BALANCE_SHEET(
+	BALANCE_SHEET_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	TOTAL_ASSETS,
+	TOTAL_LIABILITIES,
+	COMMON_STOCK,
+	RETAINED_EARNINGS,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_balance_sheet
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as balance_sheet_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        total_assets::double as total_assets,
+        total_liabilities::double as total_liabilities,
+        common_stock::double as common_stock,
+        retained_earnings::double as retained_earnings,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_balance_sheet"} */;
+create or replace view STG_CASH_FLOW(
+	CASH_FLOW_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	NET_INCOME,
+	DEPRECIATION_AND_AMORTIZATION,
+	STOCK_BASED_COMPENSATION,
+	CHANGE_IN_WORKING_CAPITAL,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_cash_flow
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as cash_flow_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        net_income::double as net_income,
+        depreciation_amortization::double as depreciation_and_amortization,
+        stock_based_compensation::double as stock_based_compensation,
+        change_in_working_capital::double as change_in_working_capital,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_cash_flow"} */;
+create or replace view STG_COMPANY_PROFILE(
+	COMPANY_ID,
+	TICKER,
+	COMPANY_NAME,
+	SECTOR,
+	INDUSTRY,
+	EXCHANGE,
+	COUNTRY,
+	EMPLOYEE_COUNT,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_company_profile
+),
+renamed as (
+    select
+        md5(cast(coalesce(cast(ticker as string), '') as string)) as company_id, -- This doesn't need a date-based surrogate key because company metadata is static
+        ticker::string as ticker,
+        company_name::string as company_name,
+        sector::string as sector,
+        industry::string as industry,
+        exchange::string as exchange,
+        country::string as country,
+        employees::int as employee_count,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_company_profile"} */;
+create or replace view STG_INCOME_STATEMENT(
+	INCOME_STATEMENT_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	EBITDA,
+	REVENUE,
+	OPERATING_INCOME,
+	GROSS_PROFIT,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_income_statement
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as income_statement_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        ebitda::double as ebitda,
+        total_revenue::double as revenue, -- Renaming for clarity
+        operating_income::double as operating_income,
+        gross_profit::double as gross_profit,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_income_statement"} */;
+create or replace view STG_MARKET_DATA(
+	MARKET_DATA_ID,
+	TICKER,
+	PRICE_DATE,
+	CLOSING_PRICE,
+	VOLUME,
+	MARKET_CAP,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_market_data
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(price_date as string), '') as string))
+ as market_data_id,
+        ticker::string as ticker,
+        price_date::date as price_date,
+        closing_price::double as closing_price,
+        volume::bigint as volume,
+        market_cap::double as market_cap,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.7", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_market_data"} */;
+CREATE OR REPLACE FILE FORMAT FINSIGHT_PARQUET_FORMAT
+	TYPE = PARQUET
+	NULL_IF = ()
+;
+create or replace task LOAD_BALANCE_SHEETS_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_BALANCE_SHEETS
+  (ticker, report_date, fiscal_quarter, sector, total_assets, total_liabilities, common_stock, retained_earnings, data_quality_flag)
+FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:total_assets::double,
+    $1:total_liabilities_net_minority_interest::double,
+    $1:common_stock::double,
+    $1:retained_earnings::double,
+    $1:data_quality_flag::varchar
+  FROM @balance_sheet_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_BALANCE_SHEET_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_BALANCE_SHEET (ticker, report_date, fiscal_quarter, sector, total_assets, total_liabilities, total_equity, common_stock, retained_earnings, data_quality_flag)
+FROM (
+  SELECT 
+    $1:ticker::varchar, 
+    $1:date::date,  
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector, 
+    $1:total_assets::double, 
+    $1:total_liabilities_net_minority_interest::double, 
+    -- We map the long yfinance name to our clean column
+    $1:total_equity_gross_minority_interest::double, 
+    $1:common_stock::double, 
+    $1:retained_earnings::double, 
+    $1:data_quality_flag::varchar
+  FROM @balance_sheet_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*.parquet'
+ON_ERROR = 'CONTINUE'
+force = True;
+create or replace task LOAD_CASH_FLOWS_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_CASH_FLOWS
+  (ticker, report_date, fiscal_quarter, sector, net_income, depreciation_amortization, stock_based_compensation, change_in_working_capital, data_quality_flag)
+FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:net_income::double,
+    $1:depreciation_and_amortization::double,
+    $1:stock_based_compensation::double,
+    $1:change_in_working_capital::double,
+    $1:data_quality_flag::varchar
+  FROM @cash_flow_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_CASH_FLOW_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_CASH_FLOW
+  (ticker, report_date, fiscal_quarter, sector, net_income, depreciation_amortization, stock_based_compensation, change_in_working_capital, data_quality_flag)
+FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:net_income::double,
+    $1:depreciation_and_amortization::double,
+    $1:stock_based_compensation::double,
+    $1:change_in_working_capital::double,
+    $1:data_quality_flag::varchar
+  FROM @cash_flow_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_COMPANY_PROFILE_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 0 1 * * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_COMPANY_PROFILE (ticker, company_name, sector, industry, exchange, country, employees)
+FROM (
+  SELECT $1:ticker::varchar, $1:shortName::varchar, $1:sector::varchar, $1:industry::varchar, $1:exchange::varchar, $1:country::varchar, $1:fullTimeEmployees::int
+  FROM @company_profile_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_INCOME_STATEMENTS_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_INCOME_STATEMENTS
+  (ticker, report_date, fiscal_quarter, sector, ebitda, total_revenue, operating_income, gross_profit, total_debt, cash_and_equivalents, operating_cash_flow, capital_expenditure, data_quality_flag)
+    FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:ebitda::double,
+    $1:total_revenue::double,
+    $1:operating_income::double,
+    $1:gross_profit::double,
+    $1:total_debt::double,
+    $1:cash_and_cash_equivalents::double,
+    $1:operating_cash_flow::double,
+    $1:capital_expenditure::double,
+    $1:data_quality_flag::varchar
+  FROM @income_statement_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_INCOME_STATEMENT_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 6 1 2,5,8,11 * UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_INCOME_statement
+  (ticker, report_date, fiscal_quarter, sector, ebitda, total_revenue, operating_income, gross_profit, total_debt, cash_and_equivalents, operating_cash_flow, capital_expenditure, data_quality_flag)
+    FROM (
+  SELECT
+    $1:ticker::varchar,
+    $1:date::date,
+    $1:fiscal_quarter::varchar,
+    SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'sector=', 2), '/', 1)::varchar AS sector,
+    $1:ebitda::double,
+    $1:total_revenue::double,
+    $1:operating_income::double,
+    $1:gross_profit::double,
+    $1:total_debt::double,
+    $1:cash_and_cash_equivalents::double,
+    $1:operating_cash_flow::double,
+    $1:capital_expenditure::double,
+    $1:data_quality_flag::varchar
+  FROM @income_statement_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+PATTERN = '.*\.parquet'
+ON_ERROR = 'CONTINUE';
+create or replace task LOAD_MARKET_DATA_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 2 * * 2-6 UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_MARKET_DATA (ticker, price_date, closing_price, volume, market_cap)
+FROM (
+  SELECT 
+    $1:ticker::varchar, 
+    $1:date::date, 
+    $1:close::double, 
+    $1:volume::bigint, 
+    -- DEFENSIVE FIX: Check both common variants of the key
+    COALESCE($1:marketcap::double, $1:market_cap::double) 
+  FROM @market_data_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+-- PATTERN FIX: Ignore the .crc files and only load the 'part' data files
+PATTERN = '.*.parquet' 
+ON_ERROR = 'CONTINUE';
+
+
+##SELECT GET_DDL('SCHEMA', 'STAGING');
+
+create or replace schema STAGING COMMENT='initial dbt cleaning';
+
+create or replace view STG_BALANCE_SHEET(
+	BALANCE_SHEET_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	TOTAL_ASSETS,
+	TOTAL_EQUITY,
+	TOTAL_LIABILITIES,
+	COMMON_STOCK,
+	RETAINED_EARNINGS,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_balance_sheet
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as balance_sheet_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        total_assets::double as total_assets,
+        total_equity::double as total_equity,
+        total_liabilities::double as total_liabilities,
+        common_stock::double as common_stock,
+        retained_earnings::double as retained_earnings,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_balance_sheet"} */;
+create or replace view STG_CASH_FLOW(
+	CASH_FLOW_ID,
+	TICKER,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	NET_INCOME,
+	DEPRECIATION_AND_AMORTIZATION,
+	STOCK_BASED_COMPENSATION,
+	CHANGE_IN_WORKING_CAPITAL,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_cash_flow
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as cash_flow_id,
+        ticker::string as ticker,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        net_income::double as net_income,
+        depreciation_amortization::double as depreciation_and_amortization,
+        stock_based_compensation::double as stock_based_compensation,
+        change_in_working_capital::double as change_in_working_capital,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_cash_flow"} */;
+create or replace view STG_COMPANY_PROFILE(
+	COMPANY_ID,
+	TICKER,
+	COMPANY_NAME,
+	SECTOR,
+	INDUSTRY,
+	EXCHANGE,
+	COUNTRY,
+	EMPLOYEE_COUNT,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_company_profile
+),
+renamed as (
+    select
+        md5(cast(coalesce(cast(ticker as string), '') as string)) as company_id, -- This doesn't need a date-based surrogate key because company metadata is static
+        ticker::string as ticker,
+        company_name::string as company_name,
+        sector::string as sector,
+        industry::string as industry,
+        exchange::string as exchange,
+        country::string as country,
+        employees::int as employee_count,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_company_profile"} */;
+create or replace view STG_INCOME_STATEMENT(
+	INCOME_STATEMENT_ID,
+	TICKER,
+	SECTOR,
+	PERIOD_DATE,
+	FISCAL_QUARTER,
+	EBITDA,
+	REVENUE,
+	OPERATING_INCOME,
+	GROSS_PROFIT,
+	DATA_QUALITY_FLAG,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_income_statement
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(report_date as string), '') as string))
+ as income_statement_id,
+        ticker::string as ticker,
+        sector::string as sector,
+        report_date::date as period_date,
+        fiscal_quarter::int as fiscal_quarter,
+        ebitda::double as ebitda,
+        total_revenue::double as revenue, -- Renaming for clarity
+        operating_income::double as operating_income,
+        gross_profit::double as gross_profit,
+        data_quality_flag::string as data_quality_flag,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_income_statement"} */;
+create or replace view STG_MARKET_DATA(
+	MARKET_DATA_ID,
+	TICKER,
+	PRICE_DATE,
+	CLOSING_PRICE,
+	VOLUME,
+	MARKET_CAP,
+	LOADED_AT
+) as (
+    with source as (
+    select * from FINSIGHT_DB.RAW.raw_market_data
+),
+renamed as (
+    select
+        
+    md5(cast(coalesce(cast(ticker as string), '') || '-' || coalesce(cast(price_date as string), '') as string))
+ as market_data_id,
+        ticker::string as ticker,
+        price_date::date as price_date,
+        closing_price::double as closing_price,
+        volume::bigint as volume,
+        market_cap::double as market_cap,
+        ingested_at as loaded_at
+    from source
+)
+select * from renamed
+  )
+/* {"app": "dbt", "dbt_version": "1.11.11", "profile_name": "finsight", "target_name": "dev", "node_id": "model.finsight.stg_market_data"} */;
+
+
+
+##SELECT GET_DDL('SCHEMA', 'INTERMEDIATE');
+
+create or replace schema INTERMEDIATE COMMENT='for metric computation';
+
+create or replace TRANSIENT TABLE INT_VALUATION_INPUTS (
+	TICKER VARCHAR(16777216),
+	PERIOD_DATE DATE,
+	REVENUE FLOAT,
+	SECTOR VARCHAR(16777216),
+	EBITDA FLOAT,
+	OPERATING_INCOME FLOAT,
+	GROSS_PROFIT FLOAT,
+	NET_INCOME FLOAT,
+	TOTAL_ASSETS FLOAT,
+	TOTAL_LIABILITIES FLOAT,
+	TOTAL_EQUITY FLOAT,
+	MARKET_CAP FLOAT,
+	CLOSING_PRICE FLOAT,
+	DATA_COMPLETENESS_FLAG VARCHAR(14),
+	ENTERPRISE_VALUE FLOAT,
+	EV_TO_EBITDA FLOAT,
+	PE_RATIO FLOAT,
+	PB_RATIO FLOAT,
+	GROSS_MARGIN FLOAT,
+	OPERATING_MARGIN FLOAT,
+	EV_TO_REVENUE FLOAT
+);
+
+##SELECT GET_DDL('TABLE', 'FINSIGHT_DB.RAW.RAW_MARKET_DATA');
+
+create or replace TABLE RAW_MARKET_DATA (
+	TICKER VARCHAR(16777216),
+	PRICE_DATE DATE,
+	CLOSING_PRICE FLOAT,
+	VOLUME NUMBER(38,0),
+	MARKET_CAP FLOAT,
+	INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()
+);
+
+##SELECT GET_DDL('TASK', 'LOAD_MARKET_DATA_TASK');
+
+create or replace task LOAD_MARKET_DATA_TASK
+	warehouse=FINSIGHT_WH
+	schedule='USING CRON 0 2 * * 2-6 UTC'
+	as COPY INTO FINSIGHT_DB.RAW.RAW_MARKET_DATA (ticker, price_date, closing_price, volume, market_cap)
+FROM (
+  SELECT 
+    $1:ticker::varchar, 
+    $1:date::date, 
+    $1:close::double, 
+    $1:volume::bigint, 
+    -- DEFENSIVE FIX: Check both common variants of the key
+    COALESCE($1:marketcap::double, $1:market_cap::double) 
+  FROM @market_data_stage
+)
+FILE_FORMAT = (TYPE = 'PARQUET')
+-- PATTERN FIX: Ignore the .crc files and only load the 'part' data files
+PATTERN = '.*.parquet' 
+ON_ERROR = 'CONTINUE';

@@ -1,13 +1,11 @@
 import os
-import json
 import logging
 import boto3
-
+import json
 from pyspark.sql import SparkSession, Row, Window
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from functools import reduce
-
 from fin_schema import income_statement_schema as s
 import company_lookup
 
@@ -40,6 +38,7 @@ def load_raw_json_from_s3(bucket, prefix, region="us-east-1"):
                 logger.warning(f"Failed to read {key}: {e}")
 
     return raw_data
+
 
 
 def build_raw_dataframe(spark, raw_data):
@@ -190,6 +189,8 @@ def main():
         .transform(flag_data_quality)
         .withColumn("year", year(col("date")))
     )
+
+    print(f"Refined {df_final.count()} records into Silver.")
 
     df_final.repartition(5, "sector") \
         .write \
