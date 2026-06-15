@@ -6,16 +6,13 @@ import types
 
 import pytest
 
-# Ensure the repository root is on PYTHONPATH for pytest execution
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Stub boto3 for import-time loading of ingestion.utils when boto3 is not installed in the environment.
 if 'boto3' not in sys.modules:
     boto3_stub = types.ModuleType('boto3')
     boto3_stub.client = lambda *args, **kwargs: None
     sys.modules['boto3'] = boto3_stub
 
-# Stub yfinance for import-time loading of ingestion.yfinance_ingestion when yfinance is not installed.
 if 'yfinance' not in sys.modules:
     yfinance_stub = types.ModuleType('yfinance')
     yfinance_stub.Ticker = lambda ticker: None
