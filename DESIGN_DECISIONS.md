@@ -1,100 +1,307 @@
 
+## Overview
+
+This document explains the engineering decisions behind FinSight.
+
+The goal was to design a realistic financial data platform using patterns commonly found in production data engineering environments.
+
+---
+
+# 1. Why a Layered Data Architecture?
+
+Decision:
+
+Use:
+
+Bronze → Silver → Analytics
 
 
+Reason:
+
+Raw financial APIs are unstable and change over time.
+
+Keeping layers separated provides:
+
+- replay capability
+- debugging ability
+- controlled transformations
 
 
-Week 3:
+---
 
-#Handling Financial Edge Cases
-    - In finance, we deal with zero-revenue companies or those with no EBITDA. Standard division by zero crashes a pipeline. Instead of writing NULLIF manually 100 times, we build a reusable "Safe Divide" tool.
-     code - {% macro safe_divide(numerator, denominator, decimal_places=2) %}
-    round(
-        cast({{ numerator }} as double) / nullif(cast({{ denominator }} as double), 0), 
-        {{ decimal_places }}
-    )
-    {% endmacro %}
+# 2. Why Store Raw Data First?
+
+Decision:
+
+Persist API responses before transformation.
 
 
-#
-(venv) kunalhirwani@Kunals-MacBook-Air dbt % dbt run --select intermediate
-12:12:56  Running with dbt=1.11.7
-12:12:56  Registered adapter: snowflake=1.11.3
-12:12:57  [WARNING]: Configuration paths exist in your dbt_project.yml file which do not apply to any resources.
-There are 3 unused configuration paths:
-- models.finsight.MARTS
-- models.finsight.INTERMEDIATE
-- models.finsight.STAGING
-12:12:57  Found 6 models, 5 sources, 525 macros
-12:12:57  
-12:12:57  Concurrency: 4 threads (target='dev')
-12:12:57  
-12:13:01  1 of 1 START sql view model RAW.int_valuation_inputs ........................... [RUN]
-12:13:02  1 of 1 ERROR creating sql view model RAW.int_valuation_inputs .................. [ERROR in 1.02s]
-12:13:03  
-12:13:03  Finished running 1 view model in 0 hours 0 minutes and 6.19 seconds (6.19s).
-12:13:03  
-12:13:03  Completed with 1 error, 0 partial successes, and 0 warnings:
-12:13:03  
-12:13:03  Failure in model int_valuation_inputs (models/intermediate/int_valuation_inputs.sql)
-12:13:03    Database Error in model int_valuation_inputs (models/intermediate/int_valuation_inputs.sql)
-  000904 (42000): SQL compilation error: error line 24 at position 8
-  invalid identifier 'INC.NET_INCOME'
-  compiled code at target/run/finsight/models/intermediate/int_valuation_inputs.sql
-12:13:03  
-12:13:03    compiled code at target/compiled/finsight/models/intermediate/int_valuation_inputs.sql
-12:13:03  
-12:13:03  Done. PASS=0 WARN=0 ERROR=1 SKIP=0 NO-OP=0 TOTAL=1
+Reason:
 
-fix = with income_statement as (
-    select * from {{ ref('stg_income_statement') }}
-),
-balance_sheet as (
-    select * from {{ ref('stg_balance_sheet') }}
-),
-cash_flow as (               -- New ingredient!
-    select * from {{ ref('stg_cash_flow') }}
-),
-market_data as (
-    select * from {{ ref('stg_market_data') }}
-),
+Financial data sources may change schemas.
 
-joined as (
-    select
-        inc.ticker,
-        inc.period_date,
-        inc.revenue,
-        inc.ebitda,
-        inc.operating_income,
-        cf.net_income,        -- Pulling Net Income from Cash Flow
-        bal.total_assets,
-        bal.total_liabilities,
-        mkt.market_cap,
-        mkt.closing_price
-    from income_statement inc
-    left join balance_sheet bal 
-        on inc.ticker = bal.ticker 
-        and inc.period_date = bal.period_date
-    left join cash_flow cf    -- The 4th Join
-        on inc.ticker = cf.ticker 
-        and inc.period_date = cf.period_date
-    left join market_data mkt 
-        on inc.ticker = mkt.ticker 
-        and inc.period_date = mkt.price_date
-)
+By preserving raw payloads:
 
-select
-    *,
-    -- True Cost = Market Value + What is Owed (Liabilities)
-    market_cap + total_liabilities as enterprise_value,
-    
-    -- Score 1: Price / Final Profit
-    {{ safe_divide('market_cap', 'net_income') }} as pe_ratio,
-    
-    -- Score 2: True Cost / Raw Operating Power
-    {{ safe_divide('market_cap + total_liabilities', 'ebitda') }} as ev_to_ebitda
-from joined
+- transformations can be rebuilt
+- historical ingestion is reproducible
+- debugging becomes easier
 
 
+Trade-off:
 
-Warehouse Governance: Schema Naming Policy".
-What to explain: "Implemented a custom generate_schema_name macro to decouple physical warehouse structure from developer environment targets. This ensured that our final 'Gold' analytical tables land in a clean MARTS schema, facilitating a simplified RBAC (Role-Based Access Control) strategy for end-users
+Storage cost increases.
+
+For enterprise systems this is usually acceptable because object storage is cheap.
+
+---
+
+# 3. Why Apache Spark?
+
+Decision:
+
+Use Spark for transformation.
+
+
+Reason:
+
+Financial datasets involve:
+
+- multiple statements
+- historical records
+- joins
+- aggregations
+
+
+Spark provides:
+
+- distributed processing
+- scalable execution model
+- dataframe transformations
+
+
+Trade-off:
+
+For small datasets Spark adds operational overhead.
+
+The choice was made because the architecture should scale beyond the initial dataset.
+
+---
+
+# 4. Why dbt?
+
+Decision:
+
+Use dbt for analytics modeling.
+
+
+Reason:
+
+dbt provides:
+
+- modular SQL
+- dependency management
+- testing
+- documentation
+
+
+Separating Spark transformations from business modeling keeps responsibilities clear:
+
+Spark:
+data processing
+
+dbt:
+analytics logic
+
+
+---
+
+# 5. Why S3 Data Lake Storage?
+
+Decision:
+
+Use object storage as the central storage layer.
+
+
+Reason:
+
+Object storage provides:
+
+- low cost
+- scalability
+- separation of compute and storage
+
+
+The design supports future migration to:
+
+- AWS Glue
+- Athena
+- EMR
+- Databricks
+
+
+---
+
+# 6. Partitioning Strategy
+
+Bronze: data_type/year/month/ticker
+Purpose: Reduce unnecessary scans.
+
+Silver: sector/year
+Purpose:Optimize analytical workloads.
+
+
+Trade-off:
+
+Too many partitions can create small files.
+
+Future improvement:
+
+Introduce optimized file sizing and compaction.
+
+---
+
+# 7. Failure Handling Strategy
+
+Ingestion failures are isolated per ticker.
+
+Example:
+
+If one company fails:
+
+- log error
+- continue processing remaining tickers
+
+
+Reason:
+
+External APIs are unreliable.
+
+One bad record should not stop the entire pipeline.
+
+
+---
+
+# 8. Data Quality Approach
+
+Quality checks happen at multiple stages.
+
+
+Ingestion:
+
+Validate response availability.
+
+
+Spark:
+
+Validate financial completeness.
+
+
+dbt:
+
+Validate analytical outputs.
+
+
+This follows the principle:
+
+"Detect quality issues as early as possible."
+
+---
+
+# 9. Idempotency
+
+Pipeline jobs are designed to be rerunnable.
+
+
+Approach:
+
+- deterministic partition paths
+- overwrite-based transformations
+- latest-record deduplication
+
+
+Benefit:
+
+Failures can be recovered without manual cleanup.
+
+---
+
+# 10. Scalability Considerations
+
+Current:
+
+Local Docker execution.
+
+Designed patterns:
+
+- cloud object storage
+- distributed processing
+- warehouse modeling
+
+
+Scaling path:
+
+Small:
+
+Docker + local Spark
+
+
+Medium:
+
+Managed Airflow + cloud Spark
+
+
+Large:
+
+Databricks/EMR + optimized lakehouse architecture
+
+
+---
+
+# 11. Trade-offs
+
+## Simplicity vs Scale
+
+The implementation avoids unnecessary infrastructure complexity.
+
+For a portfolio project:
+
+learning production patterns is more valuable than adding operational overhead.
+
+
+## Raw JSON vs Strict Schemas
+
+Raw ingestion preserves flexibility.
+
+Structured schemas are applied later.
+
+
+Trade-off:
+
+More downstream transformation work.
+
+---
+
+# 12. What I Would Change in Production
+
+At larger scale I would add:
+
+- infrastructure as code
+- CI/CD
+- data observability
+- automated lineage
+- schema enforcement
+- incremental processing
+- monitoring dashboards
+
+---
+
+# Summary
+
+FinSight demonstrates the design principles expected from modern data platforms:
+
+- reliable ingestion
+- scalable storage patterns
+- distributed processing
+- modular transformations
+- quality controls
+- maintainable architecture
