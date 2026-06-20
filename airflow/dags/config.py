@@ -3,7 +3,7 @@ from datetime import timedelta
 # Why this matters: This is the "Data Contract" for your factory.
 DEFAULT_ARGS = {
     'owner': 'Kunal',
-    'depends_on_past': False, # Allows us to run today even if yesterday failed
+    'depends_on_past': False, 
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 2,

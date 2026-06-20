@@ -15,21 +15,7 @@ with DAG(
     start_date=datetime(2024, 1, 1),
     catchup=False
 ) as dag:
-    '''
-    # 1. Wait for the big Quarterly DAG to finish today's work
-    wait_for_quarterly_data = S3KeySensor(
-    task_id='wait_for_quarterly_data',
-    bucket_name='finsight-bronze-layer',
-    # We look for the folder of the CURRENT YEAR. 
-    # {{ ds_nodash[:4] }} is just Airflow-talk for "The first 4 digits of the year" (e.g., 2024)
-    bucket_key="financials/year=*/ticker=*/data.json",
-    wildcard_match=True,
-    aws_conn_id='aws_default',
-    timeout=3600,
-    poke_interval=60
-)
-    '''
-    # 2. Run the ingestion script using the full TICKER_UNIVERSE
+    
     ingest_daily = PythonOperator(
         task_id='ingest_daily_market_data',
         python_callable=run_market_ingestion,
@@ -42,7 +28,7 @@ with DAG(
     sql="EXECUTE TASK LOAD_MARKET_DATA_TASK;"
     )
 
-    # 3. Refresh only the valuation multiples table in Snowflake
+
     run_dbt = BashOperator(
         task_id='dbt_run_multiples',
         bash_command='cd /opt/airflow/dbt && dbt run --select mart_valuation_multiples+'

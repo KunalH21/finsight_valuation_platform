@@ -19,9 +19,7 @@ def fetch_company_financials(ticker: str) -> dict:
         if stock.financials is None or stock.financials.empty:
             logger.warning(f"No financial data found for {ticker}. Skipping.")
             return None
-
-        # [2, 3] MAANG Rule: Preserve raw response exactly. 
-        # Do not rename 'Total Revenue' to 'revenue' yet.
+ 
         balance_sheet = stock.balance_sheet.to_dict() if getattr(stock, 'balance_sheet', None) is not None else {}
         cash_flow = stock.cashflow.to_dict() if getattr(stock, 'cashflow', None) is not None else {}
         info = stock.info if getattr(stock, 'info', None) is not None else {}

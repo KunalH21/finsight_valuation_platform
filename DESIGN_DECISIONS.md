@@ -57,13 +57,6 @@ For enterprise systems this is usually acceptable because object storage is chea
 
 # 3. Why Apache Spark?
 
-Decision:
-
-Use Spark for transformation.
-
-
-Reason:
-
 Financial datasets involve:
 
 - multiple statements
@@ -89,10 +82,7 @@ The choice was made because the architecture should scale beyond the initial dat
 
 # 4. Why dbt?
 
-Decision:
-
-Use dbt for analytics modeling.
-
+Used dbt for analytics modeling.
 
 Reason:
 
