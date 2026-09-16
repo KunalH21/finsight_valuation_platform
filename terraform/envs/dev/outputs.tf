@@ -42,3 +42,8 @@ output "gold_dataset_id" {
   value       = module.bigquery.gold_dataset_id
   description = "Deployed Gold BigQuery dataset ID."
 }
+
+output "wif_provider_name" {
+  value       = module.wif.provider_name
+  description = "WIF Provider Name for GitHub Actions workflow."
+}

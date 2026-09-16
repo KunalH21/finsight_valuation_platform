@@ -1,0 +1,53 @@
+name: "CI/CD Pipeline for Finsight Valuation Platform"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    name: "Terraform Plan & Apply"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/environments/dev
+
+    steps:
+      # 1. Checkout repository code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Authenticate to GCP using Workload Identity Federation (Keyless)
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/258838507488/locations/global/workloadIdentityPools/github-pool-dev/providers/github-provider-dev"
+          service_account: "sa-finsight-processing-dev@finsight-007.iam.gserviceaccount.com"
+
+      # 3. Setup Terraform CLI on the runner
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0"
+
+      # 4. Initialize Terraform working directory
+      - name: Terraform Init
+        run: terraform init
+
+      # 5. Generate execution plan for all PRs and pushes
+      - name: Terraform Plan
+        run: terraform plan -no-color
+
+      # 6. Apply changes ONLY when merged into main branch
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
