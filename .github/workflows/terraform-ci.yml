@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: terraform/environments/dev
+        working-directory: terraform/envs/dev
 
     steps:
       # 1. Checkout repository code
