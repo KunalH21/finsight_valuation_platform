@@ -38,3 +38,24 @@ module "wif" {
 }
 
 # Testing PR commenting pipeline
+
+module "compute" {
+  source = "../../modules/compute"
+
+  project_id          = var.project_id
+  region              = var.region
+  environment         = var.environment
+  ingestion_sa_email  = module.iam.ingestion_sa_email
+  processing_sa_email = module.iam.processing_sa_email
+  bronze_bucket_name  = module.storage.bronze_bucket_name
+  silver_bucket_name  = module.storage.silver_bucket_name
+  silver_dataset_id   = module.bigquery.silver_dataset_id
+}
+
+module "artifact_registry" {
+  source = "../../modules/artifact_registry"
+
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+}

@@ -1,0 +1,56 @@
+name: "Application CI/CD - Docker Build & Push"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - 'dags/**'
+      - 'spark/**'
+      - 'ingestion/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - 'dags/**'
+      - 'spark/**'
+      - 'ingestion/**'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  IMAGE_NAME: us-central1-docker.pkg.dev/finsight-007/finsight-docker-repo-dev/finsight-app
+
+jobs:
+  build-and-push:
+    name: "Build and Push Docker Image"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/258838507488/locations/global/workloadIdentityPools/github-pool-dev/providers/github-provider-dev"
+          service_account: "sa-terraform-dev@finsight-007.iam.gserviceaccount.com"
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+
+      - name: Push Docker Image to Artifact Registry
+        if: github.event_name == 'push'
+        run: |
+          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.IMAGE_NAME }}:latest
