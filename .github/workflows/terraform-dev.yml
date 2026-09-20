@@ -1,12 +1,18 @@
-name: "CI/CD Pipeline for Finsight Valuation Platform"
+name: "Terraform CI/CD - Dev"
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'terraform/envs/dev/**'
+      - 'terraform/modules/**'
   pull_request:
     branches:
       - main
+    paths:
+      - 'terraform/envs/dev/**'
+      - 'terraform/modules/**'
 
 permissions:
   contents: read
@@ -22,11 +28,9 @@ jobs:
         working-directory: terraform/envs/dev
 
     steps:
-      # 1. Checkout repository code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Authenticate to GCP using Workload Identity Federation (Keyless)
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
@@ -34,17 +38,20 @@ jobs:
           workload_identity_provider: "projects/258838507488/locations/global/workloadIdentityPools/github-pool-dev/providers/github-provider-dev"
           service_account: "sa-terraform-dev@finsight-007.iam.gserviceaccount.com"
 
-      # 3. Setup Terraform CLI on the runner
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.7.0"
 
-      # 4. Initialize Terraform working directory
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
       - name: Terraform Init
         run: terraform init
 
-      # 5. Generate execution plan for all PRs and pushes
+      - name: Terraform Validate
+        run: terraform validate -no-color
+
       - name: Terraform Plan
         id: plan
         run: terraform plan -var-file="dev.tfvars" -no-color
@@ -76,7 +83,6 @@ jobs:
               body: output
             })  
 
-      # 6. Apply changes ONLY when merged into main branch
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -var-file="dev.tfvars" -auto-approve -no-color
